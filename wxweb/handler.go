@@ -5,17 +5,17 @@ import (
 	"sync"
 )
 
-// Handler: message function wrapper
+// Handler message function wrapper
 type Handler func(*Session, *ReceivedMessage)
 
-// HandlerWrapper: message handler wrapper
+// HandlerWrapper message handler wrapper
 type HandlerWrapper struct {
 	handle  Handler
 	enabled bool
 	name    string
 }
 
-// Run: message handler callback
+// Run message handler callback
 func (s *HandlerWrapper) Run(session *Session, msg *ReceivedMessage) {
 	if s.enabled {
 		s.handle(session, msg)
@@ -46,20 +46,20 @@ func (s *HandlerWrapper) disableHandle() {
 	return
 }
 
-// HandlerRegister: message handler manager
+// HandlerRegister message handler manager
 type HandlerRegister struct {
 	mu   sync.RWMutex
 	hmap map[int][]*HandlerWrapper
 }
 
-// CreateHandlerRegister: create handler register
+// CreateHandlerRegister create handler register
 func CreateHandlerRegister() *HandlerRegister {
 	return &HandlerRegister{
 		hmap: make(map[int][]*HandlerWrapper),
 	}
 }
 
-// Add: add message callback handle to handler register
+// Add add message callback handle to handler register
 func (hr *HandlerRegister) Add(key int, h Handler, name string) error {
 	hr.mu.Lock()
 	defer hr.mu.Unlock()
@@ -74,7 +74,7 @@ func (hr *HandlerRegister) Add(key int, h Handler, name string) error {
 	return nil
 }
 
-// Get: get message handler
+// Get get message handler
 func (hr *HandlerRegister) Get(key int) (error, []*HandlerWrapper) {
 	hr.mu.RLock()
 	defer hr.mu.RUnlock()
@@ -84,7 +84,7 @@ func (hr *HandlerRegister) Get(key int) (error, []*HandlerWrapper) {
 	return fmt.Errorf("no handlers for key [%d]", key), nil
 }
 
-// GetAll: get all message handler
+// GetAll get all message handler
 func (hr *HandlerRegister) GetAll() []*HandlerWrapper {
 	hr.mu.RLock()
 	defer hr.mu.RUnlock()
@@ -95,7 +95,7 @@ func (hr *HandlerRegister) GetAll() []*HandlerWrapper {
 	return result
 }
 
-// EnableByType: enable handler by message type
+// EnableByType enable handler by message type
 func (hr *HandlerRegister) EnableByType(key int) error {
 	err, handles := hr.Get(key)
 	if err != nil {
@@ -110,7 +110,7 @@ func (hr *HandlerRegister) EnableByType(key int) error {
 	return nil
 }
 
-// DisableByType: disable handler by message type
+// DisableByType disable handler by message type
 func (hr *HandlerRegister) DisableByType(key int) error {
 	err, handles := hr.Get(key)
 	if err != nil {
@@ -125,7 +125,7 @@ func (hr *HandlerRegister) DisableByType(key int) error {
 	return nil
 }
 
-// EnableByName: enable message handler by name
+// EnableByName enable message handler by name
 func (hr *HandlerRegister) EnableByName(name string) error {
 	hr.mu.Lock()
 	defer hr.mu.Unlock()
@@ -140,7 +140,7 @@ func (hr *HandlerRegister) EnableByName(name string) error {
 	return fmt.Errorf("cannot find handler %s", name)
 }
 
-// DisableByName: disable message handler by name
+// DisableByName disable message handler by name
 func (hr *HandlerRegister) DisableByName(name string) error {
 	hr.mu.Lock()
 	defer hr.mu.Unlock()
@@ -155,7 +155,7 @@ func (hr *HandlerRegister) DisableByName(name string) error {
 	return fmt.Errorf("cannot find handler %s", name)
 }
 
-// Dump: output all message handlers
+// Dump output all message handlers
 func (hr *HandlerRegister) Dump() string {
 	hr.mu.RLock()
 	defer hr.mu.RUnlock()

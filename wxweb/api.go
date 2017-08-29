@@ -19,22 +19,24 @@ import (
 
 	"github.com/lets-go-go/httpclient"
 	"github.com/lets-go-go/logger"
-	"github.com/songtianyi/rrframework/config"
+	"github.com/robot4s/wechat/appconf"
+	"github.com/robot4s/wechat/config"
 )
 
 // JsLogin jslogin api
 func JsLogin(common *Common) (string, error) {
-	km := url.Values{}
-	km.Add("appid", common.AppId)
-	km.Add("fun", "new")
-	km.Add("lang", common.Lang)
-	km.Add("redirect_uri", common.RedirectUri)
-	km.Add("_", strconv.FormatInt(time.Now().Unix(), 10))
+	km := url.Values{
+		"appid":        []string{common.AppId},
+		"fun":          []string{"new"},
+		"lang":         []string{common.Lang},
+		"redirect_uri": []string{common.RedirectUri},
+		"_":            []string{strconv.FormatInt(time.Now().Unix(), 10)},
+	}
 
 	uri := common.LoginUrl + "/jslogin?" + km.Encode()
 
 	body, _ := httpclient.Get(uri).Text()
-	logger.Debugln("body=%v", body)
+	logger.Debugln("JsLogin body=%v", body)
 
 	ss := strings.Split(string(body), "\"")
 	if len(ss) < 2 {
@@ -43,32 +45,38 @@ func JsLogin(common *Common) (string, error) {
 	return ss[1], nil
 }
 
-// QrCode get qrcode
-func QrCode(common *Common, uuid string) ([]byte, error) {
-	km := url.Values{}
-	km.Add("t", "webwx")
-	km.Add("_", strconv.FormatInt(time.Now().Unix(), 10))
-	uri := common.LoginUrl + "/qrcode/" + uuid + "?" + km.Encode()
-	resp, err := http.Post(uri, "application/octet-stream", nil)
-	if err != nil {
-		return nil, err
+// QrCodeToFile get qrcode
+func QrCodeToFile(common *Common, uuid string) error {
+	km := url.Values{
+		"t": []string{"webwx"},
+		"_": []string{strconv.FormatInt(time.Now().Unix(), 10)},
 	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-	return body, nil
+
+	uri := common.LoginUrl + "/qrcode/" + uuid + "?" + km.Encode()
+
+	fileName := fmt.Sprintf("%s.jpg", uuid)
+	err := httpclient.Post(uri).SetContentType("application/octet-stream").ToFile(appconf.QRDir, fileName)
+
+	if err != nil {
+		logger.Errorf("QrCode error=%v", err)
+		return err
+	}
+
+	return nil
 }
 
 // Login login api
 func Login(common *Common, uuid, tip string) (string, error) {
-	km := url.Values{}
-	km.Add("tip", tip)
-	km.Add("uuid", uuid)
-	km.Add("r", strconv.FormatInt(time.Now().Unix(), 10))
-	km.Add("_", strconv.FormatInt(time.Now().Unix(), 10))
+	km := url.Values{
+		"tip":  []string{tip},
+		"uuid": []string{uuid},
+		"r":    []string{strconv.FormatInt(time.Now().Unix(), 10)},
+		"_":    []string{strconv.FormatInt(time.Now().Unix(), 10)},
+	}
 	uri := common.LoginUrl + "/cgi-bin/mmwebwx-bin/login?" + km.Encode()
 
 	body, _ := httpclient.Get(uri).Text()
-	fmt.Printf("body=%v", body)
+	logger.Debugf("Login body=%v", body)
 
 	if strings.Contains(body, "window.code=200") &&
 		strings.Contains(body, "window.redirect_uri") {
@@ -104,10 +112,11 @@ func WebNewLoginPage(common *Common, xc *XmlConfig, uri string) ([]*http.Cookie,
 
 // WebWxInit webwxinit api
 func WebWxInit(common *Common, ce *XmlConfig) ([]byte, error) {
-	km := url.Values{}
-	km.Add("pass_ticket", ce.PassTicket)
-	km.Add("skey", ce.Skey)
-	km.Add("r", strconv.FormatInt(time.Now().Unix(), 10))
+	km := url.Values{
+		"pass_ticket": []string{ce.PassTicket},
+		"skey":        []string{ce.Skey},
+		"r":           []string{strconv.FormatInt(time.Now().Unix(), 10)},
+	}
 
 	uri := common.CgiUrl + "/webwxinit?" + km.Encode()
 
@@ -121,7 +130,7 @@ func WebWxInit(common *Common, ce *XmlConfig) ([]byte, error) {
 	}
 
 	body, _ := httpclient.Post(uri).SendBody(js).Bytes()
-	logger.Debugln("WebWxInit body=%v", string(body))
+	logger.Tracef("WebWxInit body=%v", string(body))
 
 	return body, nil
 }
@@ -129,14 +138,15 @@ func WebWxInit(common *Common, ce *XmlConfig) ([]byte, error) {
 // SyncCheck synccheck api
 func SyncCheck(common *Common, ce *XmlConfig, cookies []*http.Cookie,
 	server string, skl *SyncKeyList) (int, int, error) {
-	km := url.Values{}
-	km.Add("r", strconv.FormatInt(time.Now().Unix()*1000, 10))
-	km.Add("sid", ce.Wxsid)
-	km.Add("uin", ce.Wxuin)
-	km.Add("skey", ce.Skey)
-	km.Add("deviceid", common.DeviceID)
-	km.Add("synckey", skl.String())
-	km.Add("_", strconv.FormatInt(time.Now().Unix()*1000, 10))
+	km := url.Values{
+		"r":        []string{strconv.FormatInt(time.Now().Unix()*1000, 10)},
+		"sid":      []string{ce.Wxsid},
+		"uin":      []string{ce.Wxuin},
+		"skey":     []string{ce.Skey},
+		"deviceid": []string{common.DeviceID},
+		"synckey":  []string{skl.String()},
+		"_":        []string{strconv.FormatInt(time.Now().Unix()*1000, 10)},
+	}
 	uri := "https://" + server + "/cgi-bin/mmwebwx-bin/synccheck?" + km.Encode()
 
 	js := InitReqBody{
@@ -149,32 +159,11 @@ func SyncCheck(common *Common, ce *XmlConfig, cookies []*http.Cookie,
 	}
 
 	body, _ := httpclient.Get(uri).SetTimeout(time.Duration(30) * time.Second).SetCookies(cookies).SendBody(js).Text()
-	logger.Debugln("SyncCheck body=%v", body)
-
-	// b, _ := json.Marshal(js)
-	// jar, _ := cookiejar.New(nil)
-	// u, _ := url.Parse(uri)
-	// jar.SetCookies(u, cookies)
-	// client := &http.Client{Jar: jar, Timeout: time.Duration(30) * time.Second}
-	// req, err := http.NewRequest("GET", uri, bytes.NewReader(b))
-	// if err != nil {
-	// 	return 0, 0, err
-	// }
-
-	// req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-	// req.Header.Add("User-Agent", common.UserAgent)
-
-	// resp, err := client.Do(req)
-	// if err != nil {
-	// 	return 0, 0, err
-	// }
-
-	// defer resp.Body.Close()
-	// body, _ := ioutil.ReadAll(resp.Body)
-	// strb := string(body)
+	logger.Tracef("SyncCheck body=%v", body)
 
 	reg := regexp.MustCompile("window.synccheck={retcode:\"(\\d+)\",selector:\"(\\d+)\"}")
 	sub := reg.FindStringSubmatch(body)
+
 	retcode, _ := strconv.Atoi(sub[1])
 	selector, _ := strconv.Atoi(sub[2])
 	return retcode, selector, nil
@@ -186,11 +175,12 @@ func WebWxSync(common *Common,
 	cookies []*http.Cookie,
 	msg chan []byte, skl *SyncKeyList) error {
 
-	km := url.Values{}
-	km.Add("skey", ce.Skey)
-	km.Add("sid", ce.Wxsid)
-	km.Add("lang", common.Lang)
-	km.Add("pass_ticket", ce.PassTicket)
+	km := url.Values{
+		"skey":        []string{ce.Skey},
+		"sid":         []string{ce.Wxsid},
+		"lang":        []string{common.Lang},
+		"pass_ticket": []string{ce.PassTicket},
+	}
 
 	uri := common.CgiUrl + "/webwxsync?" + km.Encode()
 
@@ -205,23 +195,10 @@ func WebWxSync(common *Common,
 		rr:      ^int(time.Now().Unix()) + 1,
 	}
 
-	b, _ := json.Marshal(js)
-	jar, _ := cookiejar.New(nil)
-	u, _ := url.Parse(uri)
-	jar.SetCookies(u, cookies)
-	client := &http.Client{Jar: jar, Timeout: time.Duration(10) * time.Second}
-	req, err := http.NewRequest("POST", uri, bytes.NewReader(b))
-	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Add("User-Agent", common.UserAgent)
+	body, _ := httpclient.Post(uri).SetTimeout(time.Duration(10) * time.Second).SetCookies(cookies).SendBody(js).Bytes()
+	logger.Traceln("WebWxSync body=%v", string(body))
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-
-	jc, err := rrconfig.LoadJsonConfigFromBytes(body)
+	jc, err := config.LoadJsonConfigFromBytes(body)
 	if err != nil {
 		return err
 	}
@@ -244,9 +221,10 @@ func WebWxSync(common *Common,
 
 // WebWxStatusNotify webwxstatusnotify api
 func WebWxStatusNotify(common *Common, ce *XmlConfig, bot *User) (int, error) {
-	km := url.Values{}
-	km.Add("pass_ticket", ce.PassTicket)
-	km.Add("lang", common.Lang)
+	km := url.Values{
+		"pass_ticket": []string{ce.PassTicket},
+		"lang":        []string{common.Lang},
+	}
 	uri := common.CgiUrl + "/webwxstatusnotify?" + km.Encode()
 
 	js := InitReqBody{
@@ -262,29 +240,21 @@ func WebWxStatusNotify(common *Common, ce *XmlConfig, bot *User) (int, error) {
 		ClientMsgId:  int(time.Now().Unix()),
 	}
 
-	b, _ := json.Marshal(js)
-	client := &http.Client{}
-	req, err := http.NewRequest("POST", uri, bytes.NewReader(b))
-	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Add("User-Agent", common.UserAgent)
+	body, _ := httpclient.Post(uri).SendBody(js).Bytes()
+	logger.Traceln("SyncCheck body=%v", string(body))
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return -1, err
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-	jc, _ := rrconfig.LoadJsonConfigFromBytes(body)
+	jc, _ := config.LoadJsonConfigFromBytes(body)
 	ret, _ := jc.GetInt("BaseResponse.Ret")
 	return ret, nil
 }
 
 // WebWxGetContact webwxgetcontact api
 func WebWxGetContact(common *Common, ce *XmlConfig, cookies []*http.Cookie) ([]byte, error) {
-	km := url.Values{}
-	km.Add("r", strconv.FormatInt(time.Now().Unix(), 10))
-	km.Add("seq", "0")
-	km.Add("skey", ce.Skey)
+	km := url.Values{
+		"r":    []string{strconv.FormatInt(time.Now().Unix(), 10)},
+		"seq":  []string{"0"},
+		"skey": []string{ce.Skey},
+	}
 	uri := common.CgiUrl + "/webwxgetcontact?" + km.Encode()
 
 	js := InitReqBody{
@@ -296,24 +266,9 @@ func WebWxGetContact(common *Common, ce *XmlConfig, cookies []*http.Cookie) ([]b
 		},
 	}
 
-	b, _ := json.Marshal(js)
-	req, err := http.NewRequest("POST", uri, bytes.NewReader(b))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Add("User-Agent", common.UserAgent)
+	body, _ := httpclient.Post(uri).SetCookies(cookies).SendBody(js).Bytes()
+	logger.Debugf("WebWxGetContact body=%v", string(body))
 
-	jar, _ := cookiejar.New(nil)
-	u, _ := url.Parse(uri)
-	jar.SetCookies(u, cookies)
-	client := &http.Client{Jar: jar}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
 	return body, nil
 }
 
@@ -321,8 +276,9 @@ func WebWxGetContact(common *Common, ce *XmlConfig, cookies []*http.Cookie) ([]b
 func WebWxSendMsg(common *Common, ce *XmlConfig, cookies []*http.Cookie,
 	from, to string, msg string) ([]byte, error) {
 
-	km := url.Values{}
-	km.Add("pass_ticket", ce.PassTicket)
+	km := url.Values{
+		"pass_ticket": []string{ce.PassTicket},
+	}
 
 	uri := common.CgiUrl + "/webwxsendmsg?" + km.Encode()
 
@@ -343,28 +299,12 @@ func WebWxSendMsg(common *Common, ce *XmlConfig, cookies []*http.Cookie,
 		},
 	}
 
-	b, _ := json.Marshal(js)
-	req, err := http.NewRequest("POST", uri, bytes.NewReader(b))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Add("User-Agent", common.UserAgent)
-
-	jar, _ := cookiejar.New(nil)
-	u, _ := url.Parse(uri)
-	jar.SetCookies(u, cookies)
-	client := &http.Client{Jar: jar}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := httpclient.Post(uri).SetCookies(cookies).SendBody(js).Bytes()
+	logger.Traceln("WebWxSendMsg body=%v", string(body))
 	return body, nil
 }
 
-// WebWxUploadMedia: webwxuploadmedia api
+// WebWxUploadMedia webwxuploadmedia api
 func WebWxUploadMedia(common *Common, ce *XmlConfig, cookies []*http.Cookie,
 	filename string, content []byte) (string, error) {
 
@@ -456,7 +396,7 @@ func WebWxUploadMedia(common *Common, ce *XmlConfig, cookies []*http.Cookie,
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
-	jc, err := rrconfig.LoadJsonConfigFromBytes(body)
+	jc, err := config.LoadJsonConfigFromBytes(body)
 	if err != nil {
 		return "", err
 	}
@@ -464,19 +404,20 @@ func WebWxUploadMedia(common *Common, ce *XmlConfig, cookies []*http.Cookie,
 	if ret != 0 {
 		return "", fmt.Errorf("BaseResponse.Ret=%d", ret)
 	}
-	mediaId, _ := jc.GetString("MediaId")
-	return mediaId, nil
+	mediaID, _ := jc.GetString("MediaId")
+	return mediaID, nil
 }
 
-// WebWxSendMsgImg: webwxsendmsgimg api
+// WebWxSendMsgImg webwxsendmsgimg api
 func WebWxSendMsgImg(common *Common, ce *XmlConfig, cookies []*http.Cookie,
 	from, to, media string) (int, error) {
 
-	km := url.Values{}
-	km.Add("pass_ticket", ce.PassTicket)
-	km.Add("fun", "async")
-	km.Add("f", "json")
-	km.Add("lang", common.Lang)
+	km := url.Values{
+		"pass_ticket": []string{ce.PassTicket},
+		"fun":         []string{"async"},
+		"f":           []string{"json"},
+		"lang":        []string{common.Lang},
+	}
 
 	uri := common.CgiUrl + "/webwxsendmsgimg?" + km.Encode()
 
@@ -498,65 +439,37 @@ func WebWxSendMsgImg(common *Common, ce *XmlConfig, cookies []*http.Cookie,
 		},
 		Scene: 0,
 	}
+	body, _ := httpclient.Post(uri).SetCookies(cookies).SendBody(js).Bytes()
+	logger.Debugf("WebWxSendMsgImg body=%v", string(body))
 
-	b, _ := json.Marshal(js)
-	req, err := http.NewRequest("POST", uri, bytes.NewReader(b))
-	if err != nil {
-		return -1, err
-	}
-	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Add("User-Agent", common.UserAgent)
-
-	jar, _ := cookiejar.New(nil)
-	u, _ := url.Parse(uri)
-	jar.SetCookies(u, cookies)
-	client := &http.Client{Jar: jar}
-	resp, err := client.Do(req)
-	if err != nil {
-		return -1, err
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-	jc, _ := rrconfig.LoadJsonConfigFromBytes(body)
+	jc, _ := config.LoadJsonConfigFromBytes(body)
 	ret, _ := jc.GetInt("BaseResponse.Ret")
 	return ret, nil
 }
 
-// WebWxGetMsgImg: webwxgetmsgimg api
-func WebWxGetMsgImg(common *Common, ce *XmlConfig, cookies []*http.Cookie, msgId string) ([]byte, error) {
-	km := url.Values{}
-	km.Add("MsgID", msgId)
-	km.Add("skey", ce.Skey)
-	km.Add("type", "slave")
+// WebWxGetMsgImg webwxgetmsgimg api
+func WebWxGetMsgImg(common *Common, ce *XmlConfig, cookies []*http.Cookie, msgID string) ([]byte, error) {
+	km := url.Values{
+		"MsgID": []string{msgID},
+		"skey":  []string{ce.Skey},
+		"type":  []string{"slave"},
+	}
 
 	uri := common.CgiUrl + "/webwxgetmsgimg?" + km.Encode()
-	req, err := http.NewRequest("GET", uri, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Content-Type", "image/jpeg")
-	req.Header.Add("User-Agent", common.UserAgent)
 
-	jar, _ := cookiejar.New(nil)
-	u, _ := url.Parse(uri)
-	jar.SetCookies(u, cookies)
-	client := &http.Client{Jar: jar}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := httpclient.Get(uri).SetCookies(cookies).Bytes()
+
 	return body, nil
 }
 
-// WebWxSendEmoticon: webwxsendemoticon api
+// WebWxSendEmoticon webwxsendemoticon api
 func WebWxSendEmoticon(common *Common, ce *XmlConfig, cookies []*http.Cookie,
 	from, to, media string) (int, error) {
 
-	km := url.Values{}
-	km.Add("fun", "sys")
-	km.Add("lang", common.Lang)
+	km := url.Values{
+		"fun":  []string{"sys"},
+		"lang": []string{common.Lang},
+	}
 
 	uri := common.CgiUrl + "/webwxsendemoticon?" + km.Encode()
 
@@ -579,90 +492,49 @@ func WebWxSendEmoticon(common *Common, ce *XmlConfig, cookies []*http.Cookie,
 		Scene: 0,
 	}
 
-	b, _ := json.Marshal(js)
-	req, err := http.NewRequest("POST", uri, bytes.NewReader(b))
-	if err != nil {
-		return -1, err
-	}
-	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Add("User-Agent", common.UserAgent)
+	body, _ := httpclient.Post(uri).SetCookies(cookies).SendBody(js).Bytes()
+	logger.Debugf("WebWxSendEmoticon body=%v", string(body))
 
-	jar, _ := cookiejar.New(nil)
-	u, _ := url.Parse(uri)
-	jar.SetCookies(u, cookies)
-	client := &http.Client{Jar: jar}
-	resp, err := client.Do(req)
-	if err != nil {
-		return -1, err
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-	jc, _ := rrconfig.LoadJsonConfigFromBytes(body)
+	jc, _ := config.LoadJsonConfigFromBytes(body)
 	ret, _ := jc.GetInt("BaseResponse.Ret")
 	return ret, nil
 }
 
-// WebWxGetIcon: webwxgeticon api
+//WebWxGetIcon webwxgeticon api
 func WebWxGetIcon(common *Common, ce *XmlConfig, cookies []*http.Cookie,
 	username, chatroomid string) ([]byte, error) {
-	km := url.Values{}
-	km.Add("seq", "0")
-	km.Add("username", username)
+	km := url.Values{
+		"seq":      []string{"0"},
+		"username": []string{username},
+		"skey":     []string{ce.Skey},
+	}
 	if chatroomid != "" {
 		km.Add("chatroomid", chatroomid)
 	}
-	km.Add("skey", ce.Skey)
+
 	uri := common.CgiUrl + "/webwxgeticon?" + km.Encode()
 
-	req, err := http.NewRequest("GET", uri, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Content-Type", "image/jpeg")
-	req.Header.Add("User-Agent", common.UserAgent)
-
-	jar, _ := cookiejar.New(nil)
-	u, _ := url.Parse(uri)
-	jar.SetCookies(u, cookies)
-	client := &http.Client{Jar: jar}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := httpclient.Get(uri).SetCookies(cookies).Bytes()
+	logger.Traceln("WebWxGetIcon body=%v", string(body))
 	return body, nil
 }
 
-// WebWxGetIconByHeadImgUrl: get head img
-func WebWxGetIconByHeadImgUrl(common *Common, ce *XmlConfig, cookies []*http.Cookie, headImgUrl string) ([]byte, error) {
-	uri := common.CgiDomain + headImgUrl
+// WebWxGetIconByHeadImgURL get head img
+func WebWxGetIconByHeadImgURL(common *Common, ce *XmlConfig, cookies []*http.Cookie, headImgURL string) ([]byte, error) {
+	uri := common.CgiDomain + headImgURL
 
-	req, err := http.NewRequest("GET", uri, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Content-Type", "image/jpeg")
-	req.Header.Add("User-Agent", common.UserAgent)
+	body, _ := httpclient.Get(uri).SetCookies(cookies).Bytes()
+	logger.Traceln("WebWxGetIconByHeadImgURL body=%v", string(body))
 
-	jar, _ := cookiejar.New(nil)
-	u, _ := url.Parse(uri)
-	jar.SetCookies(u, cookies)
-	client := &http.Client{Jar: jar}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
 	return body, nil
 }
 
-// WebWxBatchGetContact: webwxbatchgetcontact api
+//WebWxBatchGetContact webwxbatchgetcontact api
 func WebWxBatchGetContact(common *Common, ce *XmlConfig, cookies []*http.Cookie, cl []*User) ([]byte, error) {
-	km := url.Values{}
-	km.Add("r", strconv.FormatInt(time.Now().Unix(), 10))
-	km.Add("type", "ex")
+	km := url.Values{
+		"r":    []string{strconv.FormatInt(time.Now().Unix(), 10)},
+		"type": []string{"ex"},
+	}
 	uri := common.CgiUrl + "/webwxbatchgetcontact?" + km.Encode()
 
 	js := InitReqBody{
@@ -676,32 +548,17 @@ func WebWxBatchGetContact(common *Common, ce *XmlConfig, cookies []*http.Cookie,
 		List:  cl,
 	}
 
-	b, _ := json.Marshal(js)
-	req, err := http.NewRequest("POST", uri, bytes.NewReader(b))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Add("User-Agent", common.UserAgent)
-
-	jar, _ := cookiejar.New(nil)
-	u, _ := url.Parse(uri)
-	jar.SetCookies(u, cookies)
-	client := &http.Client{Jar: jar}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := httpclient.Post(uri).SetCookies(cookies).SendBody(js).Bytes()
+	logger.Debugf("WebWxBatchGetContact body=%v", string(body))
 	return body, nil
 }
 
-// WebWxVerifyUser: webwxverifyuser api
+// WebWxVerifyUser webwxverifyuser api
 func WebWxVerifyUser(common *Common, ce *XmlConfig, cookies []*http.Cookie, opcode int, verifyContent string, vul []*VerifyUser) ([]byte, error) {
-	km := url.Values{}
-	km.Add("r", strconv.FormatInt(time.Now().Unix(), 10))
-	km.Add("pass_ticket", ce.PassTicket)
+	km := url.Values{
+		"r":           []string{strconv.FormatInt(time.Now().Unix(), 10)},
+		"pass_ticket": []string{ce.PassTicket},
+	}
 
 	uri := common.CgiUrl + "/webwxverifyuser?" + km.Encode()
 	js := InitReqBody{
@@ -719,32 +576,17 @@ func WebWxVerifyUser(common *Common, ce *XmlConfig, cookies []*http.Cookie, opco
 		VerifyUserListSize: len(vul),
 		skey:               ce.Skey,
 	}
-	b, _ := json.Marshal(js)
-	req, err := http.NewRequest("POST", uri, bytes.NewReader(b))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Add("User-Agent", common.UserAgent)
-
-	jar, _ := cookiejar.New(nil)
-	u, _ := url.Parse(uri)
-	jar.SetCookies(u, cookies)
-	client := &http.Client{Jar: jar}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := httpclient.Post(uri).SetCookies(cookies).SendBody(js).Bytes()
+	logger.Traceln("WebWxVerifyUser body=%v", string(body))
 	return body, nil
 }
 
-// WebWxCreateChatroom: webwxcreatechatroom api
+// WebWxCreateChatroom webwxcreatechatroom api
 func WebWxCreateChatroom(common *Common, ce *XmlConfig, cookies []*http.Cookie, users []*User, topic string) (interface{}, error) {
-	km := url.Values{}
-	km.Add("r", strconv.FormatInt(time.Now().Unix(), 10))
-	km.Add("pass_ticket", ce.PassTicket)
+	km := url.Values{
+		"r":           []string{strconv.FormatInt(time.Now().Unix(), 10)},
+		"pass_ticket": []string{ce.PassTicket},
+	}
 
 	uri := common.CgiUrl + "/webwxcreatechatroom?" + km.Encode()
 	js := InitReqBody{
@@ -758,31 +600,16 @@ func WebWxCreateChatroom(common *Common, ce *XmlConfig, cookies []*http.Cookie, 
 		MemberList:  users,
 		Topic:       topic,
 	}
-	b, _ := json.Marshal(js)
-	req, err := http.NewRequest("POST", uri, bytes.NewReader(b))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Add("User-Agent", common.UserAgent)
-
-	jar, _ := cookiejar.New(nil)
-	u, _ := url.Parse(uri)
-	jar.SetCookies(u, cookies)
-	client := &http.Client{Jar: jar}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := httpclient.Post(uri).SetCookies(cookies).SendBody(js).Bytes()
+	logger.Traceln("WebWxCreateChatroom body=%v", string(body))
 	return body, nil
 }
 
-// WebWxRevokeMsg: webwxrevokemsg api
-func WebWxRevokeMsg(common *Common, ce *XmlConfig, cookies []*http.Cookie, clientMsgId, svrMsgId, toUserName string) error {
-	km := url.Values{}
-	km.Add("lang", common.Lang)
+// WebWxRevokeMsg webwxrevokemsg api
+func WebWxRevokeMsg(common *Common, ce *XmlConfig, cookies []*http.Cookie, clientMsgID, svrMsgID, toUserName string) error {
+	km := url.Values{
+		"lang": []string{common.Lang},
+	}
 
 	uri := common.CgiUrl + "/webwxrevokemsg?" + km.Encode()
 	js := RevokeReqBody{
@@ -792,29 +619,15 @@ func WebWxRevokeMsg(common *Common, ce *XmlConfig, cookies []*http.Cookie, clien
 			ce.Skey,
 			common.DeviceID,
 		},
-		ClientMsgId: clientMsgId,
-		SvrMsgId:    svrMsgId,
+		ClientMsgId: clientMsgID,
+		SvrMsgId:    svrMsgID,
 		ToUserName:  toUserName,
 	}
-	b, _ := json.Marshal(js)
-	req, err := http.NewRequest("POST", uri, bytes.NewReader(b))
-	if err != nil {
-		return err
-	}
-	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Add("User-Agent", common.UserAgent)
 
-	jar, _ := cookiejar.New(nil)
-	u, _ := url.Parse(uri)
-	jar.SetCookies(u, cookies)
-	client := &http.Client{Jar: jar}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-	jc, err := rrconfig.LoadJsonConfigFromBytes(body)
+	body, _ := httpclient.Post(uri).SetCookies(cookies).SendBody(js).Bytes()
+	logger.Traceln("WebWxRevokeMsg body=%v", string(body))
+
+	jc, err := config.LoadJsonConfigFromBytes(body)
 	if err != nil {
 		return err
 	}
@@ -825,33 +638,22 @@ func WebWxRevokeMsg(common *Common, ce *XmlConfig, cookies []*http.Cookie, clien
 	return nil
 }
 
-// WebWxlogout: webwxlogout api
+//WebWxLogout webwxlogout api
 func WebWxLogout(common *Common, ce *XmlConfig, cookies []*http.Cookie) error {
-	km := url.Values{}
-	km.Add("redirect", "1")
-	km.Add("type", "1")
-	km.Add("skey", ce.Skey)
+	km := url.Values{
+		"redirect": []string{"1"},
+		"type":     []string{"1"},
+		"skey":     []string{ce.Skey},
+	}
 
 	uri := common.CgiUrl + "/webwxlogout?" + km.Encode()
 	js := LogoutReqBody{
 		uin: ce.Wxuin,
 		sid: ce.Wxsid,
 	}
-	b, _ := json.Marshal(js)
-	req, err := http.NewRequest("POST", uri, bytes.NewReader(b))
-	if err != nil {
-		return err
-	}
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("User-Agent", common.UserAgent)
 
-	jar, _ := cookiejar.New(nil)
-	u, _ := url.Parse(uri)
-	jar.SetCookies(u, cookies)
-	client := &http.Client{Jar: jar}
-	_, err = client.Do(req)
-	if err != nil {
-		return err
-	}
+	body, _ := httpclient.Post(uri).SetCookies(cookies).SendBody(js).Bytes()
+	logger.Traceln("WebWxLogout body=%v", string(body))
+
 	return nil
 }

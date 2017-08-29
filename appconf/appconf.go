@@ -19,6 +19,9 @@ var (
 	// LogDir 日志目录
 	LogDir string
 
+	// QRDir QR目录
+	QRDir string
+
 	// HTTPSrvPort HTTP服务端口
 	HTTPSrvPort int
 
@@ -47,10 +50,16 @@ func init() {
 
 	LogDir = fmt.Sprintf("%s/logs", AppdataDir)
 
+	QRDir = fmt.Sprintf("%s/qr", AppdataDir)
+
 	LogLevel = logger.DEBUG
 
 	if FileExists(LogDir) == false {
 		os.MkdirAll(LogDir, os.ModeDir)
+	}
+
+	if FileExists(QRDir) == false {
+		os.MkdirAll(QRDir, os.ModeDir)
 	}
 
 	UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.109 Safari/537.36"

@@ -1,10 +1,10 @@
 package revoker // 以插件名命令包名
 
 import (
-	"github.com/lets-go-go/logger"
-	"github.com/robot4s/wechat/wxweb" // 导入协议包
-	//"strings"
 	"time"
+
+	"github.com/lets-go-go/logger"
+	"github.com/robot4s/wechat/wxweb"
 )
 
 // Register plugin
@@ -26,9 +26,8 @@ func revoker(session *wxweb.Session, msg *wxweb.ReceivedMessage) {
 	if msg.FromUserName != session.Bot.UserName {
 		return
 	}
-	//if strings.Contains(msg.Content, "美女") ||
-	//	strings.Contains(msg.Content, "笑话") {
+
 	time.Sleep(time.Second * 3)
 	session.RevokeMsg(msg.MsgId, msg.MsgId, msg.ToUserName)
-	//}
+
 }

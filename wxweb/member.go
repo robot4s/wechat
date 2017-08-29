@@ -5,12 +5,12 @@ import (
 	"fmt"
 )
 
-// MemberManager: group contact member manager
+// MemberManager group contact member manager
 type MemberManager struct {
 	Group *User
 }
 
-// CreateMemberManagerFromGroupContact: create member manager by group contact info
+// CreateMemberManagerFromGroupContact create member manager by group contact info
 func CreateMemberManagerFromGroupContact(session *Session, user *User) (*MemberManager, error) {
 	b, err := WebWxBatchGetContact(session.WxWebCommon, session.WxWebXcg, session.Cookies, []*User{{
 		EncryChatRoomId: user.EncryChatRoomId,
@@ -22,7 +22,7 @@ func CreateMemberManagerFromGroupContact(session *Session, user *User) (*MemberM
 	return CreateMemberManagerFromBytes(session, b)
 }
 
-// CreateMemberManagerFromBytes: create memeber manager by WxWebBatchGetContactResponse
+// CreateMemberManagerFromBytes create memeber manager by WxWebBatchGetContactResponse
 func CreateMemberManagerFromBytes(session *Session, b []byte) (*MemberManager, error) {
 	var gcr WxWebBatchGetContactResponse
 	if err := json.Unmarshal(b, &gcr); err != nil {
@@ -44,7 +44,7 @@ func CreateMemberManagerFromBytes(session *Session, b []byte) (*MemberManager, e
 	return mm, nil
 }
 
-// Update: get User details of group members
+// Update get User details of group members
 func (s *MemberManager) Update(session *Session) error {
 	members := make([]*User, len(s.Group.MemberList))
 	for i, v := range s.Group.MemberList {

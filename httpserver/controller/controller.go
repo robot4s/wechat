@@ -8,23 +8,31 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/lets-go-go/logger"
 	"github.com/robot4s/wechat/appconf"
+	"github.com/robot4s/wechat/robot"
 )
 
-// LoginQR 登录QR
-func LoginQR(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+// Login 登录
+func Login(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 
-	filePath := fmt.Sprintf("%s/qr.jpg", appconf.AppdataDir)
+	uuid := robot.StartRobot()
 
-	data, err := ioutil.ReadFile(filePath)
+	if uuid != "" {
+		filePath := fmt.Sprintf("%s/%s.jpg", appconf.QRDir, uuid)
+		data, err := ioutil.ReadFile(filePath)
 
-	if err != nil {
-		// Write status
-		w.WriteHeader(404)
-		logger.Errorf("[HttpSrv] Get Logo error: %v", err)
+		if err != nil {
+			// Write status
+			w.WriteHeader(404)
+			logger.Errorf("[HttpSrv] Login error: %+v", err)
+		} else {
+			// Write status
+			w.WriteHeader(200)
+			w.Write(data)
+		}
 	} else {
 		// Write status
 		w.WriteHeader(200)
-		w.Write(data)
+		w.Write([]byte("login failed"))
 	}
 
 }

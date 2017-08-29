@@ -22,8 +22,8 @@ var (
 func init() {
 	R = httprouter.New()
 
-	// 获取天气信息
-	R.GET("/wechat-login", controller.LoginQR)
+	// 登录
+	R.GET("/wechat-login", controller.Login)
 }
 
 // NewHTTPServer 创建Http服务
