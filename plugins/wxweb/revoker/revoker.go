@@ -18,7 +18,7 @@ func Register(session *wxweb.Session) {
 	session.HandlerRegister.Add(wxweb.MSG_TEXT, wxweb.Handler(revoker), "revoker")
 
 	if err := session.HandlerRegister.EnableByName("revoker"); err != nil {
-		logger.Error(err)
+		logger.Errorln(err)
 	}
 }
 

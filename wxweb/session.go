@@ -106,7 +106,7 @@ loop1:
 		case <-time.After(3 * time.Second):
 			redirectURI, err := Login(s.WxWebCommon, s.QrcodeUUID, "0")
 			if err != nil {
-				logger.Warnf("Login error", err)
+				logger.Warnf("Login error:%v", err)
 				if strings.Contains(err.Error(), "window.code=408") {
 					return err
 				}
@@ -208,7 +208,7 @@ func (s *Session) producer(msg chan []byte, errChan chan error) {
 loop1:
 	for {
 		ret, sel, err := SyncCheck(s.WxWebCommon, s.WxWebXcg, s.Cookies, s.WxWebCommon.SyncSrv, s.SynKeyList)
-		logger.Debugf("sync server:%v, ret=%v, sel:%v", s.WxWebCommon.SyncSrv, ret, sel)
+		logger.Tracef("sync server:%v, ret=%v, sel:%v", s.WxWebCommon.SyncSrv, ret, sel)
 		if err != nil {
 			logger.Errorf("SyncCheck err:%v", err)
 			continue
@@ -255,6 +255,8 @@ func (s *Session) consumer(msg []byte) {
 			logger.Warnf("AddMsgList analize err:%v.data=%v", err, string(msg))
 			continue
 		}
+
+		logger.Debugf("recvd:%+v", msg)
 		for _, v := range handles {
 			go v.Run(s, rmsg)
 		}

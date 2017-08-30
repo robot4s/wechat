@@ -70,7 +70,7 @@ func (hr *HandlerRegister) Add(key int, h Handler, name string) error {
 			}
 		}
 	}
-	hr.hmap[key] = append(hr.hmap[key], &HandlerWrapper{handle: h, enabled: false, name: name})
+	hr.hmap[key] = append(hr.hmap[key], &HandlerWrapper{handle: h, enabled: true, name: name})
 	return nil
 }
 

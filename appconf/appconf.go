@@ -36,6 +36,12 @@ var (
 
 	// ProxyURL ProxyURL
 	ProxyURL string
+
+	//RobotMaster RobotMaster
+	RobotMaster string
+
+	// WelcomeMsg WelcomeMsg
+	WelcomeMsg string
 )
 
 func init() {
@@ -66,6 +72,10 @@ func init() {
 
 	ProxyType = httpclient.CustomProxy
 	ProxyURL = "http://192.168.16.189:8080"
+
+	RobotMaster = "AOJIAN"
+
+	WelcomeMsg = "welcome!"
 }
 
 // FileExists reports whether the named file or directory exists.

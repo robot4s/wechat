@@ -28,6 +28,7 @@ func Register(session *wxweb.Session) {
 
 func forward(session *wxweb.Session, msg *wxweb.ReceivedMessage) {
 	if !msg.IsGroup {
+		logger.Debugf("not group message:%v", msg.FromUserName)
 		return
 	}
 	var contact *wxweb.User

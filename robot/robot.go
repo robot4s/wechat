@@ -10,6 +10,7 @@ import (
 	"github.com/robot4s/wechat/plugins/wxweb/revoker"
 	"github.com/robot4s/wechat/plugins/wxweb/switcher"
 	"github.com/robot4s/wechat/plugins/wxweb/system"
+	"github.com/robot4s/wechat/plugins/wxweb/verify"
 	"github.com/robot4s/wechat/wxweb"
 )
 
@@ -45,16 +46,11 @@ func initRobot(session *wxweb.Session) {
 	revoker.Register(session)
 	forwarder.Register(session)
 	system.Register(session)
-
-	// enable by type example
-	if err := session.HandlerRegister.EnableByType(wxweb.MSG_SYS); err != nil {
-		logger.Errorf("EnableByType err:%+v", err)
-		return
-	}
+	verify.Register(session)
 
 	for {
 		if err := session.LoginAndServe(false); err != nil {
-			logger.Errorf("session exit, %s", err)
+			logger.Errorf("session exit, %v", err)
 			for i := 0; i < 3; i++ {
 				logger.Info("trying re-login with cache")
 				if err := session.LoginAndServe(true); err != nil {
@@ -71,4 +67,6 @@ func initRobot(session *wxweb.Session) {
 			break
 		}
 	}
+
+	delete(robots, session.QrcodeUUID)
 }

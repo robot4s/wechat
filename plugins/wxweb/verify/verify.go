@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/lets-go-go/logger"
+	"github.com/robot4s/wechat/appconf"
 	"github.com/robot4s/wechat/wxweb" // 导入协议包
 	// 导入日志包
 )
@@ -26,18 +27,21 @@ func Register(session *wxweb.Session) {
 // 消息处理函数
 func verify(session *wxweb.Session, msg *wxweb.ReceivedMessage) {
 
-	logger.Info(msg.Content)
+	logger.Infof("receive add friend notify:%v", msg.Content)
 
-	master := session.Cm.GetContactByPYQuanPin("SONGTIANYI")
-
+	master := session.Cm.GetContactByPYQuanPin(appconf.RobotMaster)
 	if err := session.AcceptFriend("", []*wxweb.VerifyUser{{Value: msg.RecommendInfo.UserName, VerifyUserTicket: msg.RecommendInfo.Ticket}}); err != nil {
 		errMsg := fmt.Sprintf("accept %s's friend request error, %s", msg.RecommendInfo.NickName, err.Error())
-		logger.Error(errMsg)
+		logger.Errorln(errMsg)
+
 		if master != nil {
+			// 接受好友失败发送微信消息给指定好友
 			session.SendText(errMsg, session.Bot.UserName, master.UserName)
 		}
 		return
 	}
+
+	session.SendText(appconf.WelcomeMsg, session.Bot.UserName, msg.RecommendInfo.UserName)
 
 	// 回复消息
 	// 第一个参数: 回复的内容

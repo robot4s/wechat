@@ -1,10 +1,10 @@
-package share // 以插件名命令包名
+package share
 
 import (
 	"strings"
 
 	"github.com/lets-go-go/logger"
-	"github.com/robot4s/wechat/wxweb" // 导入协议包
+	"github.com/robot4s/wechat/wxweb"
 )
 
 // Register plugin
@@ -18,7 +18,7 @@ func Register(session *wxweb.Session) {
 	session.HandlerRegister.Add(wxweb.MSG_TEXT, wxweb.Handler(share), "share")
 
 	if err := session.HandlerRegister.EnableByName("share"); err != nil {
-		logger.Error(err)
+		logger.Errorln(err)
 	}
 }
 

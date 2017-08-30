@@ -17,11 +17,11 @@ func Register(session *wxweb.Session) {
 	session.HandlerRegister.Add(wxweb.MSG_WITHDRAW, wxweb.Handler(system), "system-withdraw")
 
 	if err := session.HandlerRegister.EnableByName("system-sys"); err != nil {
-		logger.Error(err)
+		logger.Errorln(err)
 	}
 
 	if err := session.HandlerRegister.EnableByName("system-withdraw"); err != nil {
-		logger.Error(err)
+		logger.Errorln(err)
 	}
 }
 

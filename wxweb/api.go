@@ -65,6 +65,19 @@ func QrCodeToFile(common *Common, uuid string) error {
 	return nil
 }
 
+func parse(body string, key string) string {
+	vals := strings.Split(body, ";")
+	for _, kv := range vals {
+
+		kvs := strings.Split(kv, "=")
+
+		if len(kvs) == 2 && strings.TrimSpace(kvs[0]) == key {
+			return strings.TrimSpace(kvs[1])
+		}
+	}
+	return ""
+}
+
 // Login login api
 func Login(common *Common, uuid, tip string) (string, error) {
 	km := url.Values{
@@ -77,6 +90,16 @@ func Login(common *Common, uuid, tip string) (string, error) {
 
 	body, _ := httpclient.Get(uri).Text()
 	logger.Debugf("Login body=%v", body)
+
+	rets := regexp.MustCompile("window.code=\"(\\d+)\";window.redirect_uri=\"(\\S+?)\";").FindStringSubmatch(body)
+
+	if len(rets) == 2 {
+
+		code, _ := strconv.Atoi(rets[0])
+		uri := rets[1]
+
+		logger.Debugf("Login response code=%v, redirect_uri=%v", code, uri)
+	}
 
 	if strings.Contains(body, "window.code=200") &&
 		strings.Contains(body, "window.redirect_uri") {
@@ -163,6 +186,11 @@ func SyncCheck(common *Common, ce *XmlConfig, cookies []*http.Cookie,
 
 	reg := regexp.MustCompile("window.synccheck={retcode:\"(\\d+)\",selector:\"(\\d+)\"}")
 	sub := reg.FindStringSubmatch(body)
+
+	if len(sub) < 2 {
+		logger.Errorf("SyncCheck error, body=%v", body)
+		return 0, 0, nil
+	}
 
 	retcode, _ := strconv.Atoi(sub[1])
 	selector, _ := strconv.Atoi(sub[2])
@@ -524,7 +552,7 @@ func WebWxGetIconByHeadImgURL(common *Common, ce *XmlConfig, cookies []*http.Coo
 	uri := common.CgiDomain + headImgURL
 
 	body, _ := httpclient.Get(uri).SetCookies(cookies).Bytes()
-	logger.Traceln("WebWxGetIconByHeadImgURL body=%v", string(body))
+	logger.Debugf("WebWxGetIconByHeadImgURL body=%v", string(body))
 
 	return body, nil
 }
@@ -577,7 +605,7 @@ func WebWxVerifyUser(common *Common, ce *XmlConfig, cookies []*http.Cookie, opco
 		skey:               ce.Skey,
 	}
 	body, _ := httpclient.Post(uri).SetCookies(cookies).SendBody(js).Bytes()
-	logger.Traceln("WebWxVerifyUser body=%v", string(body))
+	logger.Debugf("WebWxVerifyUser body=%v", string(body))
 	return body, nil
 }
 
@@ -601,7 +629,7 @@ func WebWxCreateChatroom(common *Common, ce *XmlConfig, cookies []*http.Cookie, 
 		Topic:       topic,
 	}
 	body, _ := httpclient.Post(uri).SetCookies(cookies).SendBody(js).Bytes()
-	logger.Traceln("WebWxCreateChatroom body=%v", string(body))
+	logger.Debugf("WebWxCreateChatroom body=%v", string(body))
 	return body, nil
 }
 
@@ -625,7 +653,7 @@ func WebWxRevokeMsg(common *Common, ce *XmlConfig, cookies []*http.Cookie, clien
 	}
 
 	body, _ := httpclient.Post(uri).SetCookies(cookies).SendBody(js).Bytes()
-	logger.Traceln("WebWxRevokeMsg body=%v", string(body))
+	logger.Debugf("WebWxRevokeMsg body=%v", string(body))
 
 	jc, err := config.LoadJsonConfigFromBytes(body)
 	if err != nil {
@@ -653,7 +681,7 @@ func WebWxLogout(common *Common, ce *XmlConfig, cookies []*http.Cookie) error {
 	}
 
 	body, _ := httpclient.Post(uri).SetCookies(cookies).SendBody(js).Bytes()
-	logger.Traceln("WebWxLogout body=%v", string(body))
+	logger.Debugf("WebWxLogout body=%v", string(body))
 
 	return nil
 }

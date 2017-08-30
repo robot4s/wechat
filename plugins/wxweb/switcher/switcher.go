@@ -11,7 +11,7 @@ import (
 func Register(session *wxweb.Session) {
 	session.HandlerRegister.Add(wxweb.MSG_TEXT, wxweb.Handler(switcher), "switcher")
 	if err := session.HandlerRegister.EnableByName("switcher"); err != nil {
-		logger.Error(err)
+		logger.Errorln(err)
 	}
 }
 
@@ -19,7 +19,7 @@ func switcher(session *wxweb.Session, msg *wxweb.ReceivedMessage) {
 	// contact filter
 	contact := session.Cm.GetContactByUserName(msg.FromUserName)
 	if contact == nil {
-		logger.Error("no this contact, ignore", msg.FromUserName)
+		logger.Errorf("no this contact:%v, ignore", msg.FromUserName)
 		return
 	}
 
