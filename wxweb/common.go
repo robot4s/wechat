@@ -211,7 +211,7 @@ type BaseResponse struct {
 	ErrMsg string
 }
 
-// WxWebGetContactResponse: get contact response struct
+// WxWebGetContactResponse get contact response struct
 type WxWebGetContactResponse struct {
 	BaseResponse *BaseResponse
 	MemberCount  int
